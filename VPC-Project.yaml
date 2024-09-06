@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: AWS CloudFormation template to create a VPC with 2 public and 2 private subnets,
+  an Internet Gateway, NAT Gateway, one public EC2 instance with a web server, 
+  and one private EC2 instance accessible only via SSH from the public subnet.
+  
+
+Parameters:
+  VPCGeo:
+    Default: 10.0.0.0/16
+    Description: Please enter the IP range for this VPC
+    Type: String 
+
+
+  PublicSubnet1G:
+    Default: 10.0.0.0/24
+    Description: Please enter the IP range for the public subnet 1
+    Type: String 
+
+  PublicSubnet2G:
+    Default: 10.0.1.0/24
+    Description: Please enter the IP range for the public subnet 2
+    Type: String 
+
+  PrivateSubnet1G:
+    Default: 10.0.2.0/24
+    Description: Please enter the IP range for the private subnet 1
+    Type: String 
+
+  PrivateSubnet2G:
+    Default: 10.0.3.0/24
+    Description: Please enter the IP range for the private subnet 2
+    Type: String
+
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance.
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+
+Resources:
+ VPC:
+   Type: AWS::EC2::VPC
+   Properties:
+     CidrBlock: !Ref VPCGeo
+     EnableDnsHostnames: true
+     EnableDnsSupport: true
+     InstanceTenancy: default
+     Tags: 
+     - Key: Name
+       Value: Lab VPC
+
+ InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+ AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+ NewKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: MyKeyPair
+
+ PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-west-2b"
+      CidrBlock: !Ref PublicSubnet1G
+      MapPublicIpOnLaunch: true
+      Tags:
+       - Key: Name
+         Value: Public Subnet 1
+      VpcId: !Ref VPC
+
+ PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-west-2b"
+      CidrBlock: !Ref PublicSubnet2G
+      MapPublicIpOnLaunch: true
+      Tags:
+       - Key: Name
+         Value: Public Subnet 2
+      VpcId: !Ref VPC
+      
+ PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-west-2b"
+      CidrBlock: !Ref PrivateSubnet1G
+      MapPublicIpOnLaunch: true
+      Tags:
+       - Key: Name
+         Value: Private Subnet 1
+      VpcId: !Ref VPC
+
+ PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-west-2b"
+      CidrBlock: !Ref PrivateSubnet2G
+      MapPublicIpOnLaunch: true
+      Tags:
+       - Key: Name
+         Value: Private Subnet 2
+      VpcId: !Ref VPC
+
+
+ #Public
+ RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+ Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+ AssociatePublicSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref RouteTable
+
+ AssociatePublicSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref RouteTable
+
+ #Private
+ MyEIP:
+    Type: AWS::EC2::EIP
+
+ NATGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: MyEIP
+    Properties:
+      AllocationId: !GetAtt MyEIP.AllocationId
+      SubnetId: !Ref PrivateSubnet1
+ 
+ PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+
+ PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NATGateway
+
+
+ AssociatePrivateSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+ AssociatePrivateSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+ 
+  #Group Security
+ PublicSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: "Enable HTP and SSH access on port 80 and 22"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: Public Security Group
+      VpcId: !Ref VPC
+
+ PrivateSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: "Allow SSH traffc from Public Subnet"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+      Tags:
+        - Key: Name
+          Value: SSH traffic from Public Subnet
+      VpcId: !Ref VPC
+
+ 
+
+ #Instances
+ PublicEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro  
+      ImageId: ami-0f7204385566b32d0  
+      KeyName: !Ref KeyPairName
+      SubnetId: !Ref PublicSubnet1  
+      SecurityGroupIds:
+        - !Ref PublicSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum update -y
+          yum install httpd -y
+          systemctl start httpd
+          systemctl enable httpd
+          echo "Welcome to Georgiana's Web Server!" > /var/www/html/index.html
+
+ PrivateInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro  
+      ImageId: ami-07bff6261f14c3a45
+      SubnetId: !Ref PrivateSubnet1
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds: 
+      - !Ref PrivateSecurityGroup  # Reference the security group allowing necessary access
+     
