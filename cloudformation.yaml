@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an EC2 instance for Flask app with DynamoDB.
+
+Parameters:
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+
+Resources:
+  FlaskInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: ami-0c94855ba95c71c99  # Replace with an appropriate AMI ID
+      SecurityGroupIds: [!Ref FlaskSecurityGroup]
+      UserData: 
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            yum update -y
+            amazon-linux-extras install -y python3.8
+            yum install -y python3-pip
+            pip3 install flask boto3
+            # Create app directory
+            mkdir -p /home/ec2-user/my_flask_app
+            cd /home/ec2-user/my_flask_app
+            # Save application code
+            echo "${AppScript}" > app.py
+            # Save requirements.txt
+            echo "Flask==2.0.1\nboto3==1.17.49" > requirements.txt
+            # Run Flask app
+            FLASK_APP=app.py flask run --host=0.0.0.0 --port=80 &
+
+  FlaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Allow HTTP and SSH traffic
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
