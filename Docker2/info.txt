@@ -1,0 +1,4 @@
+docker build -t flask-env-img .
+docker run -d -p 83:80 -e CONFIG_FILE=config.dev --name=flask_dev flask-env-img
+docker run -d -p 84:80 -e CONFIG_FILE=config.test --name=flask_test flask-env-img
+docker run -d -p 85:80 -e CONFIG_FILE=config.prod --name=flask_prod flask-env-img
