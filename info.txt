@@ -1,0 +1,8 @@
+# git clone https://github.com/nigelpoulton/ddd2023.git
+cd demo5
+docker build -t flaskimg3 .
+docker network create net3
+docker run -d -p 6379 --network net3 --name redis redis:alpine
+docker run -d -p 8080:8080 --network net3 --name flask3 flaskimg3
+http://localhost:8080
+
