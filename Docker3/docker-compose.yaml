@@ -1,0 +1,7 @@
+services:
+  web:
+    build: .
+    ports:
+      - "86:80"
+    environment:
+      - CONFIG_FILE=config.${ENVIRONMENT}
