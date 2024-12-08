@@ -1,0 +1,26 @@
+# remove the containers, specially the one working on 8080
+docker-compose up -d --build
+docker-compose down
+docker-compose up -d
+# redis cannot have a container name in the yml file to scale, they have to be unique
+# it also cannot have a port published as every container has to have a different port when scalling
+# so it can have port "8080" but not "8080:8080"
+# the name of the service from docker-compose.yaml to scale a particular container
+docker-compose up -d --scale redis=3
+# to see that they were created and exposed to different ports (random):
+docker container ls
+# to see a log of a particular conatiner:
+docker logs flaskapp1
+# to see all redis logs from all containers:
+docker-compose logs redis
+# scalling cannot be done with the web server as it listens on 8080 and the other containers cannot listen on it when scalled
+docker-compose up -d --scale web=4
+-> all additional redis containers were deleted
+-> flask container were created but not running! port already in use!
+docker container ls -a
+# scalling can also be added to the yml file directly
+scale: 4
+# it will remove the web containers as they are not mentioned in the yaml
+
+# docker compose only works with containers on the same host
+# if we delete a container manually, it does not recreate it to maintain the number (maybe later)
