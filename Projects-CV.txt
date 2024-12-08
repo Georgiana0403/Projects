@@ -1,0 +1,11 @@
+Projects to do for my CV
+
+1.CloudFormation script to create a VPC with 2 public and 2 private subnets. Public subnets with Internet Gateway. Private subnets with NAT Gateway. One public EC2 with a web server (apache or flask) open to the internet. One private EC2 with access only from the public subnet on SSH. README.md file with a nice diagram and description of the whole infrastructure.
+
+2.The same as above but written in Boto3. Written in a way that you can rerun the same script and it will check what pieces are missing and will create them. If all is created, the script should not fail on any step, but just give info that each resource is already created.
+
+3.Flask server with nice looking html templates and DynamoDB to save data. Simple add/update/delete/display books, movies, or whatever else. One CloudFormation script to create the server and install everything in UserData.
+
+4.CICD pipeline to run on GitHub/GitLab every time a change is made in the Flask server code above and update it on a server. Maybe 2 environments, Dev and Prod and some tests like Unit Testing, SonarQube, Selenium.
+
+5. 
