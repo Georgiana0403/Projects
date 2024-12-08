@@ -1,0 +1,15 @@
+docker compose build
+
+# make sure .env file has ENVIRONMENT=dev
+docker compose up -d
+# check http://localhost:86
+
+# make sure .env file has ENVIRONMENT=test
+docker compose down
+docker compose up -d
+# check http://localhost:86
+
+# make sure .env file has ENVIRONMENT=prod
+docker compose down
+docker compose up -d
+# check http://localhost:86
